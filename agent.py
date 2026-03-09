@@ -4,7 +4,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 
 # 1. Paste your Google AI Studio API key here
-os.environ["GOOGLE_API_KEY"] = "AIzaSyBqRmUDnejYXaXWbRtEnr7XhlQUCvLythk"
+os.environ["GOOGLE_API_KEY"] = "YOUR_API_KEY_HERE"
 
 # 2. Dynamic Data Loader (The Best Practice)
 # We tell Pandas to read the dataset from our external CSV file
