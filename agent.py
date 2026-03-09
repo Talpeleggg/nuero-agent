@@ -6,6 +6,16 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 # 1. Paste your Google AI Studio API key here
 os.environ["GOOGLE_API_KEY"] = "YOUR_API_KEY_HERE"
 
+#Cloud-Ready Directory Management
+# We check if K8s passed an environment variable for the mount path. 
+# If not, we default to a local folder named 'saved_graphs'.
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.abspath("./saved_graphs"))
+
+# This tells Python: "Create this folder if it doesn't exist yet, and don't crash if it does."
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+print(f"System Check: All output files will be routed to: {OUTPUT_DIR}\n")
+
+
 # 2. Dynamic Data Loader (The Best Practice)
 # We tell Pandas to read the dataset from our external CSV file
 file_path = "brain_data.csv"
@@ -23,13 +33,15 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
 # 4. Define the Guardrails (The Agent's Persona)
 # This replaces the need for predefined scenarios!
-instructions = """
+instructions = f"""
 You are an expert Neuroscience Data Analyst. 
 You are working with a pandas dataframe containing EEG brain wave data.
 Strict Rules:
 1. If the user asks a question unrelated to the data, politely decline to answer.
 2. If the user asks you to create a graph or plot, write Python code to generate it using matplotlib or seaborn.
-3. ALWAYS save the plot as a '.png' file using plt.savefig() and do NOT use plt.show(). Tell the user the name of the saved file.
+3. ALWAYS save the plot as a '.png' file.
+4. CRITICAL: You MUST save all files exactly to this directory path: '{OUTPUT_DIR}'. Do not save them anywhere else.
+5. Do NOT use plt.show(). Tell the user the exact full path of the saved file.
 """
 
 # 5. Create the Agent with the Guardrails
@@ -38,7 +50,8 @@ agent = create_pandas_dataframe_agent(
     df, 
     verbose=True, 
     allow_dangerous_code=True,
-    prefix=instructions # Injecting our guardrails here!
+    prefix=instructions, # Injecting our guardrails here!
+    handle_parsing_errors=True
 )
 
 # 6. The Interactive Research Loop

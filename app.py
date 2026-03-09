@@ -4,6 +4,7 @@ import os
 import glob
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
+from agent import agent
 
 # 1. UI Configuration
 st.set_page_config(page_title="Neuro-Agent UI", layout="wide")
@@ -29,23 +30,6 @@ if uploaded_file is not None and api_key:
     df = pd.read_csv(uploaded_file)
     st.write("### 📊 Data Preview")
     st.dataframe(df.head())
-
-    # Initialize the Brain
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
-    
-    instructions = f"""
-    You are an expert Neuroscience Data Analyst. 
-    You are working with a pandas dataframe containing EEG brain wave data.
-    Strict Rules:
-    1. If asked to create a graph or plot, use matplotlib or seaborn.
-    2. ALWAYS save the plot as a '.png' file exactly in this directory: '{OUTPUT_DIR}'.
-    3. Do NOT use plt.show(). Tell the user the plot was saved successfully.
-    """
-
-    agent = create_pandas_dataframe_agent(
-        llm, df, verbose=True, allow_dangerous_code=True,
-        prefix=instructions, handle_parsing_errors=True
-    )
 
     st.write("---")
     st.write("### 🤖 Ask the Agent")
