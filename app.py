@@ -135,7 +135,7 @@ if uploaded_file and is_key_valid:
 
     st.divider()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-latest", temperature=0)
     
     instructions = f"""
     You are an expert Neuroscience Data Analyst specializing in BCI signal analysis.
