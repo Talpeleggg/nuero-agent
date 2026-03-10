@@ -2,111 +2,236 @@ import streamlit as st
 import pandas as pd
 import os
 import glob
-from agent import get_neural_agent
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_experimental.agents import create_pandas_dataframe_agent
 
-# 1. Page Configuration (Centered and focused)
-st.set_page_config(page_title="BCI Data Pipeline", page_icon="🧠", layout="centered")
+# 1. High-End Page Configuration (Inspired by modern data apps)
+st.set_page_config(
+    page_title="NeuroData Pipeline",
+    page_icon="🧠",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- Header & Brain Aesthetics ---
-# Using a high-quality unsplash brain/network image
-st.image("https://images.unsplash.com/photo-1559757175-5700dde675bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80", use_column_width=True)
-st.markdown("<h1 style='text-align: center; color: #2E86C1; margin-top: -20px;'>🧠 BCI Signal Analysis Pipeline</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #5D6D7E; font-size: 1.2rem;'>Automated Neurotechnology & EEG Data Agent</p>", unsafe_allow_html=True)
-st.divider()
+# ---------------------------------------------------------
+# CUSTOM STYLING (Replacing deprecated elements and adding aesthetics)
+# ---------------------------------------------------------
+st.markdown("""
+    <style>
+    /* Professional Header Bar with integrated brain art */
+    .hero-banner {
+        background: linear-gradient(135deg, #101015 0%, #202025 100%);
+        padding: 2.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        border: 1px solid #303035;
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-banner::after {
+        content: '';
+        position: absolute;
+        top: 0; right: 0; width: 300px; height: 100%;
+        background-image: url('https://img.icons8.com/plasticine/200/brain.png');
+        background-repeat: no-repeat;
+        background-position: center;
+        opacity: 0.15;
+    }
+    .hero-title {
+        color: #FFFFFF;
+        font-size: 2.5rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 0.5rem !important;
+    }
+    .hero-subtitle {
+        color: #A0A0A5;
+        font-size: 1.1rem;
+        margin-bottom: 0px !important;
+    }
 
-# --- Section 1: Authentication ---
-st.markdown("### 🔑 1. System Authentication")
-st.info("Please enter your Google API Key below to activate the neural agent.")
-api_key = st.text_input("Google API Key", type="password", placeholder="AIzaSy...", help="Press Enter to apply")
+    /* Clean Chat Interface */
+    .stChatMessage { border-radius: 10px; margin-bottom: 10px; }
+    .stChatMessage.user { background-color: #262730; }
+    .stChatMessage.assistant { background-color: #101015; border: 1px solid #202025; }
 
-if api_key:
-    os.environ["GOOGLE_API_KEY"] = api_key
-    st.success("Authentication Successful! Pipeline unlocked.")
-    st.divider()
+    /* Info Cards */
+    div.stMetric { background-color: #1A1A20; border-radius: 10px; padding: 15px; border: 1px solid #202025; }
+    </style>
+""", unsafe_allow_html=True)
 
-    # --- Section 2: Data Ingestion ---
-    st.markdown("### 📂 2. Data Ingestion")
-    uploaded_file = st.file_uploader("Upload your EEG/BCI Dataset (CSV format)", type=["csv"])
+# ---------------------------------------------------------
+# THE ARTISTIC BRAIN BAR (Header)
+# ---------------------------------------------------------
+st.markdown("""
+    <div class="hero-banner">
+        <h1 class="hero-title">🧠 NeuroData Pipeline</h1>
+        <p class="hero-subtitle">High-Performance Automated Analysis for BCI Signals & EEG</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# SIDEBAR: CONFIGURATION & PIPELINE MANAGEMENT
+# ---------------------------------------------------------
+with st.sidebar:
+    st.header("⚙️ Pipeline Configuration")
     
+    # Secure API Input
+    st.markdown("---")
+    st.markdown("### Step 1: Initialize Assistant Brain")
+    api_key = st.text_input(
+        "Enter Google API Key", 
+        type="password", 
+        help="Get this from Google AI Studio. Stored in session only."
+    )
+    
+    # Securely set environment variable
+    if api_key:
+        os.environ["GOOGLE_API_KEY"] = api_key
+        st.success("Assistant initialized!")
+    
+    # Data Ingestion
+    st.markdown("---")
+    st.markdown("### Step 2: Ingest Signal Data")
+    uploaded_file = st.file_uploader(
+        "Load experimental CSV data", 
+        type=["csv"], 
+        help="Expected columns: Subject_ID, Condition, Alpha_Power, Beta_Power..."
+    )
+
+    # Output management
     OUTPUT_DIR = os.path.abspath("./ui_graphs")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    st.markdown("---")
+    st.markdown("### 🛠️ Quick Analysis Actions")
+    q_btn_1 = st.button("Generate Alpha/Beta Boxplot", help="Analysis like 'theta_power_boxplot.png'")
+    q_btn_2 = st.button("Summary Descriptive Stats", help="Instantly calculate average signal powers")
+    
+    if st.button("🗑️ Clear Pipeline History"):
+        if "messages" in st.session_state:
+            st.session_state.messages = []
+        st.rerun()
 
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        
-        # Initialize the fixed agent!
-        agent = get_neural_agent(df, OUTPUT_DIR)
-        
-        # --- Section 3: Telemetry ---
-        st.markdown("### 📡 3. Dataset Telemetry")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Samples (Rows)", f"{df.shape[0]:,}")
-        col2.metric("Features (Cols)", df.shape[1])
-        col3.metric("Missing Values", df.isna().sum().sum())
-        col4.metric("Memory", f"{df.memory_usage(deep=True).sum() / (1024*1024):.2f} MB")
-        
-        with st.expander("🔍 View Descriptive Statistics"):
-            st.dataframe(df.describe(), use_container_width=True)
-        st.divider()
+# ---------------------------------------------------------
+# MAIN WORKSPACE: TELEMETRY & ANALYSIS
+# ---------------------------------------------------------
+if uploaded_file and api_key:
+    # Read the data instantly
+    df = pd.read_csv(uploaded_file)
+    
+    # ---------------------------------------------------------
+    # UI SECTION A: DATA TELEMETRY (Inspired by dashboards)
+    # ---------------------------------------------------------
+    st.markdown("### 📡 Data Telemetry")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    col1.metric("Subject Count", df['Subject_ID'].nunique())
+    col2.metric("Features Detected", df.shape[1])
+    col3.metric("Signal Rows (Total)", f"{df.shape[0]:,}")
+    
+    # Find Avg Alpha Power if column exists
+    if 'Alpha_Power' in df.columns:
+        avg_alpha = df['Alpha_Power'].mean()
+        col4.metric("Avg Alpha Power", f"{avg_alpha:.2f} µV")
+    else:
+        col4.metric("Avg Alpha Power", "N/A")
 
-        # --- Section 4: Quick Diagnostics ---
-        st.markdown("### ⚡ 4. Quick Diagnostics")
-        colA, colB, colC = st.columns(3)
-        prompt_1 = colA.button("📊 Alpha vs Beta Power", use_container_width=True)
-        prompt_2 = colB.button("📈 Data Distribution Boxplot", use_container_width=True)
-        prompt_3 = colC.button("🧠 Highest Signal Value", use_container_width=True)
-        st.divider()
+    st.divider()
 
-        # --- Section 5: Chat Interface ---
-        col_chat, col_clear = st.columns([0.8, 0.2])
-        with col_chat:
-            st.markdown("### 💬 5. Neural Agent Chat")
-        with col_clear:
-            if st.button("🗑️ Clear History"):
-                if "messages" in st.session_state:
-                    st.session_state.messages = []
-                st.rerun()
+    # Initialize LLM & Agent
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0)
+    
+    instructions = f"""
+    You are an expert Neuroscience Data Analyst specializing in BCI signal analysis.
+    You are working with a pandas dataframe. Strict Rules:
+    1. If asked to create a graph, generate it using matplotlib or seaborn.
+    2. ALWAYS save the plot as a '.png' file exactly in this directory: '{OUTPUT_DIR}'.
+    3. State clearly that the plot was saved. Never use `plt.show()`.
+    4. Format your analytical findings professionally.
+    """
+    
+    agent = create_pandas_dataframe_agent(
+        llm, 
+        df, 
+        verbose=True, 
+        allow_dangerous_code=True,
+        prefix=instructions, 
+        handle_parsing_errors=True
+    )
 
+    # ---------------------------------------------------------
+    # UI SECTION B: ANALYSIS WORKSPACE (Tabs)
+    # ---------------------------------------------------------
+    tab1, tab2 = st.tabs(["💬 Assistant Chat", "📋 Data Preview"])
+    
+    with tab2:
+        st.markdown("### Descriptive Statistics Summary")
+        st.dataframe(df.describe().T, use_container_width=True)
+        st.markdown("### Head of Dataset")
+        st.dataframe(df.head(100), use_container_width=True)
+
+    with tab1:
+        # Chat interface management
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
+        # Display history
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        user_prompt = st.chat_input("Ask the agent to analyze the neural signals...")
+        # Chat Input Area (The prompt text box)
+        input_container = st.container()
         
-        if prompt_1: user_prompt = "Create a bar chart comparing average Alpha and Beta power across conditions. Save it as a png."
-        if prompt_2: user_prompt = "Create a boxplot showing the distribution of all continuous variables. Save it as a png."
-        if prompt_3: user_prompt = "Which row or condition has the highest recorded signal value? Give me the exact numbers."
+        # Accept quick button prompts or user input
+        query_input = st.chat_input("Request analysis or visualization of the current dataset...")
+        
+        # Overwrite user input if quick button was pressed
+        if q_btn_1: query_input = "Generate a boxplot showing the distribution of Alpha_Power and Beta_Power for each Condition. Save the plot."
+        if q_btn_2: query_input = "Show me the mean Alpha_Power and Beta_Power grouped by Subject_ID."
 
-        if user_prompt:
-            st.session_state.messages.append({"role": "user", "content": user_prompt})
+        # Handle Query Execution
+        if query_input:
+            # Add user message
+            st.session_state.messages.append({"role": "user", "content": query_input})
             with st.chat_message("user"):
-                st.markdown(user_prompt)
+                st.markdown(query_input)
 
+            # Get Agent Response
             with st.chat_message("assistant"):
-                with st.spinner("Processing neural data..."):
+                with st.spinner("Assistant thinking... analyzing signals..."):
+                    # Clear old graphs to ensure clean display
                     for f in glob.glob(f"{OUTPUT_DIR}/*.png"):
                         os.remove(f)
-                    
-                    try:
-                        answer = agent.invoke(user_prompt)
-                        response_text = answer['output']
-                        
-                        # Remove the explicit "Final Answer:" text if it leaked into the UI
-                        clean_text = response_text.replace("Final Answer:", "").strip()
-                        
-                        st.markdown(clean_text)
-                        st.session_state.messages.append({"role": "assistant", "content": clean_text})
 
+                    try:
+                        answer = agent.invoke(query_input)
+                        response_text = answer['output']
+                        st.markdown(response_text)
+                        st.session_state.messages.append({"role": "assistant", "content": response_text})
+
+                        # Detect and show generated images
                         generated_images = glob.glob(f"{OUTPUT_DIR}/*.png")
                         if generated_images:
                             for img_path in generated_images:
-                                st.image(img_path)
+                                st.image(img_path, use_container_width=True)
+                                # Add download button for professionalism
                                 with open(img_path, "rb") as file:
-                                    st.download_button("💾 Download Plot", data=file, file_name=os.path.basename(img_path), mime="image/png")
+                                    st.download_button(label="💾 Download Plot", data=file, file_name=os.path.basename(img_path), mime="image/png")
                     except Exception as e:
-                        error_msg = f"Pipeline Error: {e}"
-                        st.error(error_msg)
+                        error_msg = f"Analysis Error: {e}"
+                        # Securely handle common API key errors
+                        if "PERMISSION_DENIED" in error_msg:
+                            st.error("API Key Authentication Failed (Permission Denied). Please check your key in the sidebar.")
+                        elif "reported as leaked" in error_msg:
+                            st.error("API Key compromised. Please revoke and provide a fresh key.")
+                        else:
+                            st.error(error_msg)
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
+
+elif uploaded_file and not api_key:
+    # Handle the "Ingested, but missing config" state aestheticallly
+    st.info("👈 Data ingested successfully. Please configure and initialize the Assistant Assistant brain in the sidebar to begin analysis.")
+elif not uploaded_file:
+    # Empty State (Professionally organized)
+    st.success("✨ Welcome. Your Neuroscience Signal Pipeline is initialized. Please use the sidebar to load your dataset.")
