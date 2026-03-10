@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import os
 import glob
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_experimental.agents import create_pandas_dataframe_agent
-from agent import agent  # Importing the agent setup from our agent.py file
+
+# Import the function from agent.py
+from agent import get_neural_agent
 
 # 1. Page Configuration
 st.set_page_config(
@@ -53,7 +53,13 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 uploaded_file = st.file_uploader("Upload your EEG/BCI Dataset (CSV)", type=["csv"])
 
 if uploaded_file and api_key:
+    # Read the data
     df = pd.read_csv(uploaded_file)
+    
+    # ---------------------------------------------------------
+    # CREATE THE AGENT DYNAMICALLY HERE
+    # ---------------------------------------------------------
+    agent = get_neural_agent(df, OUTPUT_DIR)
     
     # --- Top Section: Dataset Telemetry ---
     st.markdown("### 📡 Dataset Telemetry")
