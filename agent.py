@@ -9,7 +9,7 @@ def get_neural_agent(df, output_dir):
     with advanced guardrails for neurotechnology datasets.
     """
     # Initialize the LLM
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)   
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
     
     # ---------------------------------------------------------
     # THE ELITE GUARDRAILS (System Prompt)
