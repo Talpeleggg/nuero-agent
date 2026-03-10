@@ -1,75 +1,92 @@
 import os
-import pandas as pd
+from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 
-# 1. Paste your Google AI Studio API key here
-os.environ["GOOGLE_API_KEY"] = "YOUR_API_KEY_HERE"
+def get_neural_agent(df, output_dir):
+    """
+    Creates and returns a production-ready LangChain Pandas agent 
+    with advanced guardrails for neurotechnology datasets.
+    """
+    # Initialize the LLM
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+    
+    # ---------------------------------------------------------
+    # THE ELITE GUARDRAILS (System Prompt)
+    # ---------------------------------------------------------
+    instructions = f"""
+    You are an elite Computational Neuroscientist and Lead Data Engineer. 
+    You specialize in analyzing Brain-Computer Interface (BCI) signals, EEG data, and complex neurotechnology datasets.
+    
+    Your goal is to assist researchers by analyzing the provided pandas dataframe.
+    
+    METHODOLOGY & DATA RIGOR:
+    1. Always check for missing values (NaN) or potential anomalies (like motion artifacts or extreme voltage spikes) before providing statistical summaries.
+    2. When calculating metrics (e.g., average frequency power, latency), ensure you group by the relevant experimental conditions if they exist in the data.
+    3. Explain your findings in clear, academic language suitable for a lab report or research paper.
+    
+    VISUALIZATION RULES:
+    1. If asked to plot data, generate production-quality graphs using 'matplotlib' or 'seaborn'.
+    2. Ensure all graphs have clear titles, axis labels (with units like Hz, µV, or ms if applicable), and legends.
+    3. CRITICAL: You MUST save EVERY plot as a '.png' file exactly in this directory: '{output_dir}'.
+    4. NEVER use `plt.show()`. Your environment cannot render it.
+    5. After saving, state clearly: "I have generated the plot and saved it to [insert filename]."
+    
+    SECURITY & SCOPE:
+    1. You are strictly confined to analyzing the provided dataframe. 
+    2. If the user asks you to perform tasks outside of data analysis (e.g., writing web scrapers, executing OS system commands, or answering general trivia), politely refuse and guide them back to the dataset.
+    """
+    
+    # Create the Agent
+    agent = create_pandas_dataframe_agent(
+        llm, 
+        df, 
+        verbose=True, 
+        allow_dangerous_code=True,
+        prefix=instructions, 
+        handle_parsing_errors=True
+    )
+    
+    return agent
 
-#Cloud-Ready Directory Management
-# We check if K8s passed an environment variable for the mount path. 
-# If not, we default to a local folder named 'saved_graphs'.
-OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.abspath("./saved_graphs"))
+# ==========================================
+# LOCAL CLI TESTING BLOCK
+# ==========================================
+if __name__ == "__main__":
+    import pandas as pd
+    
+    # 1. Load secrets from the .env file securely!
+    load_dotenv() 
+    
+    # Check if the key was loaded successfully
+    if not os.getenv("GOOGLE_API_KEY"):
+        print("CRITICAL ERROR: GOOGLE_API_KEY is missing. Please add it to your .env file.")
+        exit(1)
 
-# This tells Python: "Create this folder if it doesn't exist yet, and don't crash if it does."
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-print(f"System Check: All output files will be routed to: {OUTPUT_DIR}\n")
-
-
-# 2. Dynamic Data Loader (The Best Practice)
-# We tell Pandas to read the dataset from our external CSV file
-file_path = "brain_data.csv"
-print(f"Attempting to load dataset from: {file_path}...\n")
-
-try:
-    df = pd.read_csv(file_path)
-    print(f"Success! Loaded {len(df)} rows of data into the agent's memory.\n")
-except FileNotFoundError:
-    print(f"Error: Could not find '{file_path}'. Please make sure it's in the same folder.")
-    exit()
-
-# 3. Define the LLM (The "Brain" of the agent) using Gemini
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
-
-# 4. Define the Guardrails (The Agent's Persona)
-# This replaces the need for predefined scenarios!
-instructions = f"""
-You are an expert Neuroscience Data Analyst. 
-You are working with a pandas dataframe containing EEG brain wave data.
-Strict Rules:
-1. If the user asks a question unrelated to the data, politely decline to answer.
-2. If the user asks you to create a graph or plot, write Python code to generate it using matplotlib or seaborn.
-3. ALWAYS save the plot as a '.png' file.
-4. CRITICAL: You MUST save all files exactly to this directory path: '{OUTPUT_DIR}'. Do not save them anywhere else.
-5. Do NOT use plt.show(). Tell the user the exact full path of the saved file.
-"""
-
-# 5. Create the Agent with the Guardrails
-agent = create_pandas_dataframe_agent(
-    llm, 
-    df, 
-    verbose=True, 
-    allow_dangerous_code=True,
-    prefix=instructions, # Injecting our guardrails here!
-    handle_parsing_errors=True
-)
-
-# 6. The Interactive Research Loop
-print("=" * 40)
-print("  Neuro-Agent Activated  ")
-print("  Type 'exit' to close ")
-print("=" * 40 + "\n")
-
-while True:
-    scientist_question = input("\nWhat would you like to analyze or plot? \n> ")
-
-    if scientist_question.lower() in ['exit', 'quit']:
-        print("Shutting down the agent. Goodbye!")
-        break
-
-    print("\nAgent is working...")
+    # 2. Robust path routing
+    OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.abspath("./saved_graphs"))
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
     try:
-        answer = agent.invoke(scientist_question)
-        print(f"\nFinal Answer: {answer['output']}\n")
-    except Exception as e:
-        print(f"\nAn error occurred: {e}\n")
+        df = pd.read_csv("brain_data.csv")
+        cli_agent = get_neural_agent(df, OUTPUT_DIR)
+        
+        print("=" * 50)
+        print(" 🧠 Elite Neural-Agent CLI Activated ")
+        print("  Type 'exit' to close ")
+        print("=" * 50 + "\n")
+
+        while True:
+            scientist_question = input("\nWhat is your analysis request? \n> ")
+            if scientist_question.lower() in ['exit', 'quit']:
+                print("Terminating session. Goodbye!")
+                break
+            
+            try:
+                answer = cli_agent.invoke(scientist_question)
+                print(f"\n[Agent]: {answer['output']}\n")
+            except Exception as e:
+                print(f"\n[System Error]: {e}\n")
+                
+    except FileNotFoundError:
+        print("Error: Could not find 'brain_data.csv' for CLI testing.")
