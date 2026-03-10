@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import os
 import glob
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_experimental.agents import create_pandas_dataframe_agent
+
+# Import our modular agent factory!
+from agent import get_neural_agent
 
 # 1. High-End Page Configuration
 st.set_page_config(
@@ -73,17 +74,14 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Step 1: Initialize Assistant Brain")
     
-    # UI FIX: Shortened placeholder so it doesn't overlap the eye icon
     raw_api_key = st.text_input(
         "Enter Google API Key", 
         type="password", 
         placeholder="AIza...",
         help="Get this from Google AI Studio. Stored in session only."
     )
-    # UI FIX: Moved instructional text below the input box cleanly
     st.caption("Press Enter to apply")
     
-    # LOGIC FIX: Fail-fast input validation
     is_key_valid = False
     if raw_api_key:
         if raw_api_key.startswith("AIza") and len(raw_api_key) > 30:
@@ -117,7 +115,6 @@ with st.sidebar:
 # ---------------------------------------------------------
 # MAIN WORKSPACE: TELEMETRY & ANALYSIS
 # ---------------------------------------------------------
-# LOGIC FIX: App only unlocks if a file is uploaded AND the key passed validation
 if uploaded_file and is_key_valid:
     df = pd.read_csv(uploaded_file)
     
@@ -135,25 +132,10 @@ if uploaded_file and is_key_valid:
 
     st.divider()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-latest", temperature=0)
-    
-    instructions = f"""
-    You are an expert Neuroscience Data Analyst specializing in BCI signal analysis.
-    You are working with a pandas dataframe. Strict Rules:
-    1. If asked to create a graph, generate it using matplotlib or seaborn.
-    2. ALWAYS save the plot as a '.png' file exactly in this directory: '{OUTPUT_DIR}'.
-    3. State clearly that the plot was saved. Never use `plt.show()`.
-    4. Format your analytical findings professionally.
-    """
-    
-    agent = create_pandas_dataframe_agent(
-        llm, 
-        df, 
-        verbose=True, 
-        allow_dangerous_code=True,
-        prefix=instructions, 
-        handle_parsing_errors=True
-    )
+    # ---------------------------------------------------------
+    # THE CLEAN IMPORT (No duplication!)
+    # ---------------------------------------------------------
+    agent = get_neural_agent(df, OUTPUT_DIR)
 
     tab1, tab2 = st.tabs(["💬 Assistant Chat", "📋 Data Preview"])
     
@@ -190,8 +172,12 @@ if uploaded_file and is_key_valid:
                     try:
                         answer = agent.invoke(query_input)
                         response_text = answer['output']
-                        st.markdown(response_text)
-                        st.session_state.messages.append({"role": "assistant", "content": response_text})
+                        
+                        # Clean up the prefix if it leaks
+                        clean_text = response_text.replace("Final Answer:", "").strip()
+                        
+                        st.markdown(clean_text)
+                        st.session_state.messages.append({"role": "assistant", "content": clean_text})
 
                         generated_images = glob.glob(f"{OUTPUT_DIR}/*.png")
                         if generated_images:
