@@ -1,0 +1,11 @@
+# Environments
+venv/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Agent Output files
+ui_graphs/
+saved_graphs/
