@@ -55,20 +55,24 @@ def get_neural_agent(df, output_dir):
 if __name__ == "__main__":
     import pandas as pd
     
-    # 1. Load secrets from the .env file securely!
+    # 1. Load secrets and configs from the .env file
     load_dotenv() 
     
-    # Check if the key was loaded successfully
     if not os.getenv("GOOGLE_API_KEY"):
         print("CRITICAL ERROR: GOOGLE_API_KEY is missing. Please add it to your .env file.")
         exit(1)
 
-    # 2. Robust path routing
+    # 2. Robust path routing for outputs
     OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.abspath("./saved_graphs"))
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
+    # 3. Dynamic Data Loading (No more hardcoding!)
+    # It looks for TEST_DATA_PATH in .env, and defaults to "brain_data.csv" if it accidentally got deleted
+    test_file_path = os.getenv("TEST_DATA_PATH", "brain_data.csv")
+    
     try:
-        df = pd.read_csv("brain_data.csv")
+        print(f"System: Attempting to load test dataset from '{test_file_path}'...")
+        df = pd.read_csv(test_file_path)
         cli_agent = get_neural_agent(df, OUTPUT_DIR)
         
         print("=" * 50)
@@ -89,4 +93,4 @@ if __name__ == "__main__":
                 print(f"\n[System Error]: {e}\n")
                 
     except FileNotFoundError:
-        print("Error: Could not find 'brain_data.csv' for CLI testing.")
+        print(f"Error: Could not find '{test_file_path}'. Please check your .env file or ensure the file exists.")
